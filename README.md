@@ -6,20 +6,21 @@ Cette application de génération de mot de passe utilise Python et Tkinter pour
 
 - Génération de mots de passe aléatoires avec options de configuration
 - Évaluation de la robustesse du mot de passe
-- Sauvegarde des mots de passe générés
+- Sauvegarde des mots de passe générés avec chiffrement
+- Exportation et importation des mots de passe en formats CSV et JSON
 - Double authentification (2FA) avec codes TOTP et QR code
 
 ## Prérequis
 
 - Python 3.x
-- Bibliothèques Python : `pyotp`, `qrcode[pil]`, `pillow`, `tkinter`
+- Bibliothèques Python : `pyotp`, `qrcode[pil]`, `pillow`, `tkinter`, `cryptography`
 
 ## Installation
 
 Installez les bibliothèques requises :
 
 ```sh
-pip install pyotp qrcode[pil] pillow
+pip install pyotp qrcode[pil] pillow cryptography
 ```
 
 ## Utilisation
@@ -34,6 +35,7 @@ python password_generator_with_2fa.py
 3. Cliquez sur "Générer" pour créer un nouveau mot de passe.
 4. Sauvegardez le mot de passe si nécessaire.
 5. Configurez la double authentification (2FA) en scannant le QR code avec votre application d'authentification et vérifiez le code.
+6. Exportez ou importez les mots de passe en utilisant les boutons correspondants.
 
 ## Contribuer
 
