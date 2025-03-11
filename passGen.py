@@ -3,11 +3,30 @@ import string
 import tkinter as tk
 from tkinter import messagebox
 from tkinter import simpledialog
+from tkinter import filedialog
 import pyotp
 import qrcode
 from PIL import Image, ImageTk
 import os
+import json
+import csv
+from cryptography.fernet import Fernet
 
+# Génération et gestion des clés de chiffrement
+def load_key():
+    if not os.path.exists('secret.key'):
+        key = Fernet.generate_key()
+        with open('secret.key', 'wb') as key_file:
+            key_file.write(key)
+    else:
+        with open('secret.key', 'rb') as key_file:
+            key = key_file.read()
+    return key
+
+key = load_key()
+cipher_suite = Fernet(key)
+
+# Génération de mot de passe
 def generate_password(length=12, use_uppercase=True, use_lowercase=True, use_digits=True, use_special=True):
     if not (use_uppercase or use_lowercase or use_digits or use_special):
         raise ValueError("Au moins un type de caractère doit être sélectionné")
@@ -39,6 +58,7 @@ def replace_random_char(password, characters):
     index = random.randint(0, len(password) - 1)
     return password[:index] + random.choice(characters) + password[index + 1:]
 
+# Vérification de la robustesse du mot de passe
 def check_password_strength(password):
     length_score = len(password) / 2
     variety_score = sum([any(c in group for c in password) for group in [string.ascii_uppercase, string.ascii_lowercase, string.digits, string.punctuation]]) * 2
@@ -71,9 +91,49 @@ def on_save():
     name = simpledialog.askstring("Sauvegarder mot de passe", "Entrez un nom pour ce mot de passe:")
     if not name:
         return
+    encrypted_password = cipher_suite.encrypt(password.encode()).decode()
     with open("passwords.txt", "a") as file:
-        file.write(f"{name}: {password}\n")
+        file.write(f"{name}: {encrypted_password}\n")
     messagebox.showinfo("Succès", "Mot de passe sauvegardé")
+
+def on_export():
+    file_path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv"), ("JSON files", "*.json")])
+    if not file_path:
+        return
+    passwords = []
+    with open("passwords.txt", "r") as file:
+        for line in file:
+            name, encrypted_password = line.strip().split(": ")
+            decrypted_password = cipher_suite.decrypt(encrypted_password.encode()).decode()
+            passwords.append({"name": name, "password": decrypted_password})
+    if file_path.endswith(".csv"):
+        with open(file_path, "w", newline='') as csv_file:
+            writer = csv.DictWriter(csv_file, fieldnames=["name", "password"])
+            writer.writeheader()
+            writer.writerows(passwords)
+    elif file_path.endswith(".json"):
+        with open(file_path, "w") as json_file:
+            json.dump(passwords, json_file, indent=4)
+    messagebox.showinfo("Succès", "Mots de passe exportés")
+
+def on_import():
+    file_path = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv"), ("JSON files", "*.json")])
+    if not file_path:
+        return
+    passwords = []
+    if file_path.endswith(".csv"):
+        with open(file_path, "r") as csv_file:
+            reader = csv.DictReader(csv_file)
+            for row in reader:
+                passwords.append(row)
+    elif file_path.endswith(".json"):
+        with open(file_path, "r") as json_file:
+            passwords = json.load(json_file)
+    with open("passwords.txt", "a") as file:
+        for password in passwords:
+            encrypted_password = cipher_suite.encrypt(password["password"].encode()).decode()
+            file.write(f"{password['name']}: {encrypted_password}\n")
+    messagebox.showinfo("Succès", "Mots de passe importés")
 
 def setup_2fa():
     global totp
@@ -138,6 +198,8 @@ label_strength.grid(row=7, columnspan=2)
 
 tk.Button(frame, text="Configurer 2FA", command=setup_2fa).grid(row=8, columnspan=2)
 tk.Button(frame, text="Sauvegarder", command=on_save).grid(row=9, columnspan=2)
-tk.Button(frame, text="Quitter", command=root.quit).grid(row=10, columnspan=2)
+tk.Button(frame, text="Exporter", command=on_export).grid(row=10, columnspan=2)
+tk.Button(frame, text="Importer", command=on_import).grid(row=11, columnspan=2)
+tk.Button(frame, text="Quitter", command=root.quit).grid(row=12, columnspan=2)
 
 root.mainloop()
